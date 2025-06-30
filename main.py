@@ -8,19 +8,16 @@ from discord import app_commands
 from discord.ui import View, Button
 import aiohttp
 import requests
-from flask import Flask, jsonify
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 import time
 import logging
-import threading
-
 load_dotenv()
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = 'BOT TOKEN'
 CONFIG_FILE = "channels.json"
 LAST_STATE_FILE = "last_state.json"
-WEBHOOK_URL = "https://discord.com/api/webhooks/1375215015056904302/pWuNmRgKzuJz_Zo98NwQTU5LRckxYRFghBU9eCKt52uemgEtDsPgq9RI_eKx3inl3UWr"
+WEBHOOK_URL = "Webhook Url"
 
 # --- Load and Save Channel IDs ---
 server_configs = {}
@@ -155,29 +152,7 @@ webhook_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger()
 logger.addHandler(webhook_handler)
 
-# Flask Setup
-app = Flask(__name__)
 
-@app.route('/api/meme', methods=['GET'])
-def get_meme():
-    try:
-        response = requests.get("https://meme-api.com/gimme")
-        if response.status_code == 200:
-            meme_data = response.json()
-            return jsonify({
-                "title": meme_data.get("title"),
-                "url": meme_data.get("url"),
-                "subreddit": meme_data.get("subreddit"),
-                "author": meme_data.get("author"),
-                "ups": meme_data.get("ups"),
-                "nsfw": meme_data.get("nsfw"),
-                "spoiler": meme_data.get("spoiler"),
-                "postLink": meme_data.get("postLink")
-            })
-        else:
-            return jsonify({"error": "Failed to fetch meme"}), response.status_code
-    except requests.RequestException as e:
-        return jsonify({"error": f"Request failed: {str(e)}"}), 500
 
 # Bot Setup
 intents = discord.Intents.default()
@@ -662,6 +637,35 @@ async def reset_stock(interaction: discord.Interaction):
     
     await interaction.response.send_message("✅ All stock channels have been reset. Use the set commands to configure new channels.")
 
+@bot.tree.command(name="ping", description="Check bot latency and API response time")
+async def ping_command(interaction: discord.Interaction):
+    # Calculate bot latency
+    bot_latency = round(bot.latency * 1000)
+    
+    # Start timing for API test
+    start_time = time.time()
+    
+    await interaction.response.defer()
+    
+    # Test API latency
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(STOCK_API_URL) as r:
+                api_latency = round((time.time() - start_time) * 1000)
+    except Exception:
+        api_latency = "N/A"
+    
+    # Create embed
+    embed = discord.Embed(
+        title="🏓 Pong!",
+        color=discord.Color.green(),
+        timestamp=datetime.now(timezone.utc)
+    )
+    embed.add_field(name="Bot Latency", value=f"{bot_latency}ms", inline=True)
+    embed.add_field(name="API Latency", value=f"{api_latency}ms" if api_latency != "N/A" else "N/A", inline=True)
+    
+    await interaction.followup.send(embed=embed)
+
 @bot.tree.command(name="stock", description="Show current stock information")
 async def stock_command(interaction: discord.Interaction):
     await interaction.response.defer()
@@ -723,14 +727,6 @@ async def stock_command(interaction: discord.Interaction):
         )
     
     await interaction.followup.send(embed=embed)
-
-# Function to run Flask server
-def run_flask():
-    app.run(host='0.0.0.0', port=5000, debug=False)
-
-# Start Flask server in a separate thread
-flask_thread = threading.Thread(target=run_flask, daemon=True)
-flask_thread.start()
 
 # Run the bot
 bot.run(TOKEN)
