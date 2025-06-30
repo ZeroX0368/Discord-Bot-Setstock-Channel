@@ -1,1 +1,1 @@
-# Discord-Bot-Setstock-Channel
+Bot Grow A Garden Set Stock Channel
