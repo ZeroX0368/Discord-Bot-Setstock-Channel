@@ -1,5 +1,4 @@
 requests
 python-dotenv
-flask
 discord-py
 aiohttp
